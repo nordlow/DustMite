@@ -16,7 +16,7 @@ import std.range;
 import std.stdio : File, stdin;
 import std.string;
 import std.traits;
-import std.stdio : stderr;
+import std.stdio;
 
 import polyhash;
 
@@ -167,9 +167,11 @@ struct ParseOptions
 	uint tabWidth;
 }
 
+import dustmite : RemoveRule;
+
 /// Parse the given file/directory.
 /// For files, modifies `path` to be the base name for .test / .reduced directories.
-Entity loadFiles(ref string path, ParseOptions options)
+Entity loadFiles(ref string path, ParseOptions options, scope const RemoveRule[] removeRules)
 {
 	if (path.exists && path.isDir)
 	{
@@ -179,7 +181,9 @@ Entity loadFiles(ref string path, ParseOptions options)
 			{
 				assert(entry.startsWith(path));
 				auto name = entry[path.length+1..$];
-				set.children ~= loadFile(name, entry, options);
+				auto file = loadFile(name, entry, options, removeRules);
+				if (file !is null)
+					set.children ~= file;
 			}
 		return set;
 	}
@@ -191,7 +195,7 @@ Entity loadFiles(ref string path, ParseOptions options)
 			name = path = "stdin";
 		else
 			name = realPath.baseName();
-		return loadFile(name, realPath, options);
+		return loadFile(name, realPath, options, removeRules);
 	}
 }
 
@@ -260,8 +264,25 @@ void[] readFile(File f)
 	return result.data;
 }
 
-Entity loadFile(string name, string path, ParseOptions options)
+Entity loadFile(string name, string path, ParseOptions options, scope const RemoveRule[] removeRules)
 {
+	import std.regex : Regex, match;
+	const bool defaultRemove = !removeRules.front.remove;
+	bool removeFile = true;
+	if (path.exists && !path.isDir)
+	{
+		foreach (rule; removeRules)
+		{
+			if ((rule.shellGlob && name.globMatch(rule.shellGlob)) ||
+				(rule.regexp !is Regex!char.init && name.match(rule.regexp)))
+			{
+				removeFile = rule.remove;
+			}
+		}
+		if (removeFile)
+			return null;
+	}
+
 	stderr.writeln("Loading ", path);
 	auto contents = cast(string)readFile(path == "-" ? stdin : File(path, "rb"));
 
