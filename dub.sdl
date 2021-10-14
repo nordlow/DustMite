@@ -1,0 +1,9 @@
+name "dustmite"
+authors "Vladimir Pantelev"
+targetPath "."
+sourceFiles "dustmite.d" "polyhash.d" "splitter.d"
+
+configuration "application" {
+	targetType "executable"
+	mainSourceFile "dustmite.d"
+}
