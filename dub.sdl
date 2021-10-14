@@ -1,5 +1,6 @@
 name "dustmite"
 authors "Vladimir Pantelev"
+license "Boost"
 targetPath "."
 sourceFiles "dustmite.d" "polyhash.d" "splitter.d"
 
